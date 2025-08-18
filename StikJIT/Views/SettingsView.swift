@@ -13,6 +13,8 @@ struct SettingsView: View {
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String = "AppIcon"
     @AppStorage("useDefaultScript") private var useDefaultScript = false
     @AppStorage("enableAdvancedOptions") private var enableAdvancedOptions = false
+    @AppStorage("enableAdvancedBetaOptions") private var enableAdvancedBetaOptions = false
+    @AppStorage("enableTesting") private var enableTesting = false
     @AppStorage("enablePiP") private var enablePiP = false
 
     @State private var isShowingPairingFilePicker = false
@@ -371,6 +373,13 @@ struct SettingsView: View {
                             if !newValue {
                                 useDefaultScript = false
                                 enablePiP = false
+                                enableAdvancedBetaOptions = false
+                                enableTesting = false
+                            }
+                        }
+                        .onChange(of: enableAdvancedBetaOptions) { _, newValue in
+                            if !newValue {
+                                enableTesting = false
                             }
                         }
                     }
