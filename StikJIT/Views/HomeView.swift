@@ -180,7 +180,7 @@ struct HomeView: View {
                         let progressTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { t in
                             DispatchQueue.main.async {
                                 if importProgress < 1 {
-                                    importProgress += 0.25
+                                    importProgress += 0.05
                                 } else {
                                     t.invalidate()
                                     isImportingFile = false
@@ -524,7 +524,7 @@ struct HomeView: View {
             tipRow(systemImage: "lock.shield", title: "Local only", message: "StikDebug runs entirely on-device. No data leaves your device.")
             
             Button {
-                if let url = URL(string: "https://github.com/StephenDev0/StikDebug-Guide/blob/main/pairing_file.md") {
+                if let url = URL(string: "https://appdb.to/enable-jit") {
                     UIApplication.shared.open(url)
                 }
             } label: {
