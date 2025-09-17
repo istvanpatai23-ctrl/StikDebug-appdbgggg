@@ -32,16 +32,15 @@ struct CustomErrorView: View {
     
     private var accentColor: Color {
         if customAccentColorHex.isEmpty {
-            return .blue
+            return .white
         } else {
-            return Color(hex: customAccentColorHex) ?? .blue
+            return Color(hex: customAccentColorHex) ?? .white
         }
     }
     
     
     var body: some View {
         ZStack {
-            // Background overlay
             Color.black.opacity(0.6)
                 .edgesIgnoringSafeArea(.all)
                 .opacity(opacity)
@@ -51,9 +50,7 @@ struct CustomErrorView: View {
                     }
                 }
             
-            // Card itself
             VStack(spacing: 12) {
-                // Icon based on messageType
                 switch messageType {
                 case .error:
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -72,19 +69,16 @@ struct CustomErrorView: View {
                         .padding(.top, 8)
                 }
                 
-                // Title - slightly smaller
                 Text(title)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? .white : .black)
                     .multilineTextAlignment(.center)
                 
-                // Divider
                 Rectangle()
                     .frame(height: 1)
                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.2))
                     .padding(.horizontal, 12)
                 
-                // Message 
                 Text(LocalizedStringKey(message))
                     .font(.system(size: 15, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.9) : .black.opacity(0.9))
@@ -93,12 +87,11 @@ struct CustomErrorView: View {
                     .padding(.horizontal, 12)
                 
                 
-                // Dismiss button (only shown when showButton is true)
                 if showButton {
                     VStack(spacing: 6) {
                         Button(action: {
                             dismissWithAnimation()
-                            onPrimaryButtonTap?() // Call primary action if provided
+                            onPrimaryButtonTap?()
                         }) {
                             Text(primaryButtonText)
                                 .font(.system(size: 16, weight: .semibold, design: .rounded))
@@ -114,7 +107,7 @@ struct CustomErrorView: View {
                         if showSecondaryButton {
                             Button(action: {
                                 dismissWithAnimation()
-                                onSecondaryButtonTap?() // Call secondary action if provided
+                                onSecondaryButtonTap?()
                             }) {
                                 Text(secondaryButtonText)
                                     .font(.system(size: 16, weight: .medium, design: .rounded))
@@ -136,7 +129,6 @@ struct CustomErrorView: View {
                         .frame(height: 12)
                 }
             }
-            // Made the card smaller overall
             .frame(width: min(UIScreen.main.bounds.width - 80, 300))
             .background(
                 RoundedRectangle(cornerRadius: 16)
@@ -164,12 +156,11 @@ struct CustomErrorView: View {
     }
     
     private func dismissWithAnimation() {
-        withAnimation(.easeOut(duration: 0.15)) {
+        withAnimation(.easeOut(duration: 0.18)) {
             opacity = 0
-            scale = 0.8
+            scale = 0.95
         }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
             onDismiss()
         }
     }

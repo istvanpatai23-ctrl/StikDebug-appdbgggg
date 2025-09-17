@@ -9,18 +9,19 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @AppStorage("username") private var username = "User"
-    @AppStorage("customAccentColor") private var customAccentColorHex: String = ""
     @AppStorage("selectedAppIcon") private var selectedAppIcon: String = "AppIcon"
     @AppStorage("useDefaultScript") private var useDefaultScript = false
     @AppStorage("enableAdvancedOptions") private var enableAdvancedOptions = false
     @AppStorage("enableAdvancedBetaOptions") private var enableAdvancedBetaOptions = false
     @AppStorage("enableTesting") private var enableTesting = false
     @AppStorage("enablePiP") private var enablePiP = false
-
+    @AppStorage("customAccentColor") private var customAccentColorHex: String = ""
+    @AppStorage("appTheme") private var appThemeRaw: String = AppTheme.system.rawValue
+    private var currentTheme: AppTheme { AppTheme(rawValue: appThemeRaw) ?? .system }
+    
     @State private var isShowingPairingFilePicker = false
     @Environment(\.colorScheme) private var colorScheme
 
-    @State private var selectedAccentColor: Color = .blue
     @State private var showIconPopover = false
     @State private var showPairingFileMessage = false
     @State private var pairingFileIsValid = false
@@ -30,11 +31,9 @@ struct SettingsView: View {
     @State private var importProgress: Float = 0.0
     @State private var is_lc = false
     @State private var showColorPickerPopup = false
-
+    
     @StateObject private var mountProg = MountingProgress.shared
-
     @State private var mounted = false
-
     @State private var showingConsoleLogsView = false
     @State private var showingDisplayView = false
 
@@ -47,7 +46,11 @@ struct SettingsView: View {
             Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         return marketingVersion
     }
-
+    
+    private var accentColor: Color {
+        if customAccentColorHex.isEmpty { return .white }
+        return Color(hex: customAccentColorHex) ?? .white
+    }
     // Developer profile image URLs
     private let developerProfiles: [String: String] = [
         "appdb": "https://appdb.to/favicon-appdb.png",
@@ -59,14 +62,6 @@ struct SettingsView: View {
         "Huge_Black": "https://github.com/HugeBlack.png",
         "Wynwxst": "https://github.com/Wynwxst.png",
     ]
-
-    private var accentColor: Color {
-        if customAccentColorHex.isEmpty {
-            return .blue
-        } else {
-            return Color(hex: customAccentColorHex) ?? .blue
-        }
-    }
 
     // Helper computed properties to break up complex expressions
     private var isAnyImportInProgress: Bool {
@@ -473,10 +468,122 @@ struct SettingsView: View {
                                 }
                             }
                         }
-                        .padding(.vertical, 20)
-                        .padding(.horizontal, 16)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
                     }
-                    .padding(.bottom, 4)
+                }
+            }
+            .navigationTitle("Settings")
+        }
+        .alert("Appdb Import Error", isPresented: $appdbImportManager.showAppdbErrorAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(appdbImportManager.appdbErrorMessage)
+        }
+        .fileImporter(isPresented: $isShowingPairingFilePicker, allowedContentTypes: [UTType(filenameExtension: "mobiledevicepairing", conformingTo: .data)!, .propertyList]) { result in
+            switch result {
+            case .success(let url):
+                let fileManager = FileManager.default
+                let accessing = url.startAccessingSecurityScopedResource()
+                
+                if fileManager.fileExists(atPath: url.path) {
+                    do {
+                        let dest = URL.documentsDirectory.appendingPathComponent("pairingFile.plist")
+                        if FileManager.default.fileExists(atPath: dest.path) {
+                            try fileManager.removeItem(at: dest)
+                        }
+                        try fileManager.copyItem(at: url, to: dest)
+                        
+                        DispatchQueue.main.async {
+                            isImportingFile = true
+                            importProgress = 0
+                        }
+                        
+                        startHeartbeatInBackground()
+                        
+                        let progressTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { t in
+                            DispatchQueue.main.async {
+                                if importProgress < 1 {
+                                    importProgress += 0.25
+                                } else {
+                                    t.invalidate()
+                                    isImportingFile = false
+                                    pairingFileIsValid = true
+                                    withAnimation { showPairingFileMessage = true }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                        withAnimation { showPairingFileMessage = false }
+                                    }
+                                }
+                            }
+                        }
+                        RunLoop.current.add(progressTimer, forMode: .common)
+                    } catch {
+                        print("Error copying file: \(error)")
+                    }
+                }
+                if accessing { url.stopAccessingSecurityScopedResource() }
+            case .failure(let error):
+                print("Failed to import file: \(error)")
+            }
+        }
+    }
+    
+    // MARK: - New Card-Based UI Components
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                // Subtle depth gradient background
+                ThemedBackground(style: currentTheme.backgroundStyle)
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        headerCard
+                        appearanceCard
+                        pairingCard
+                        behaviorCard
+                        advancedCard
+                        helpCard
+                        versionInfo
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 30)
+                }
+                
+                // Busy overlay while importing pairing file
+                if isImportingFile {
+                    Color.black.opacity(0.35).ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView("Processing pairing file…")
+                        VStack(spacing: 8) {
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color(UIColor.tertiarySystemFill))
+                                        .frame(height: 8)
+                                    
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.green)
+                                        .frame(width: geometry.size.width * CGFloat(importProgress), height: 8)
+                                        .animation(.linear(duration: 0.3), value: importProgress)
+                                }
+                            }
+                            .frame(height: 8)
+                            Text("\(Int(importProgress * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.top, 6)
+                    }
 
                     // Advanced Settings Card
                     SettingsCard {
@@ -593,16 +700,39 @@ struct SettingsView: View {
                         Text("Version \(appVersion) • iOS \(UIDevice.current.systemVersion)")
                             .font(.footnote)
                             .foregroundColor(.secondary.opacity(0.8))
-
-                        Spacer()
-                    }
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                            )
+                    )
+                    .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 20)
+                
+                // Success toast after import
+                if showPairingFileMessage && pairingFileIsValid && !isImportingFile {
+                    VStack {
+                        Spacer()
+                        Text("✓ Pairing file successfully imported")
+                            .font(.footnote.weight(.semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.15), lineWidth: 1))
+                            .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 3)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .padding(.bottom, 30)
+                    }
+                    .animation(.easeInOut(duration: 0.25), value: showPairingFileMessage)
+                }
             }
+            .navigationTitle("Settings")
         }
+        // Force a white tint in Settings, overriding any global/user tint
+        .tint(Color.white)
         .fileImporter(
             isPresented: $isShowingPairingFilePicker,
             allowedContentTypes: [
@@ -687,23 +817,318 @@ struct SettingsView: View {
         } message: {
             Text(appdbImportManager.appdbErrorMessage)
         }
-        .onAppear {
-            loadCustomAccentColor()
+        .preferredColorScheme(.dark)
+    }
+    
+    // MARK: - Cards
+    
+    private var headerCard: some View {
+        glassCard {
+            VStack(spacing: 16) {
+                VStack {
+                    Image("StikJIT")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 80, height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                }
+                Text("StikDebug")
+                    .font(.title2.weight(.semibold))
+                    .foregroundColor(.primary)
+            }
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
-
-    private func loadCustomAccentColor() {
-        if customAccentColorHex.isEmpty {
-            selectedAccentColor = .blue
-        } else {
-            selectedAccentColor = Color(hex: customAccentColorHex) ?? .blue
+    
+    private var appearanceCard: some View {
+        glassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Appearance")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Button(action: { showingDisplayView = true }) {
+                    HStack {
+                        Image(systemName: "paintbrush")
+                            .font(.system(size: 18))
+                            .foregroundColor(.primary.opacity(0.85))
+                        Text("Display")
+                            .foregroundColor(.primary.opacity(0.85))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+            .padding(4)
+        }
+        .sheet(isPresented: $showingDisplayView) {
+            DisplayView()
+                .preferredColorScheme(.dark)
         }
     }
-
-    private func saveCustomAccentColor(_ color: Color) {
-        customAccentColorHex = color.toHex() ?? ""
+    
+    private var pairingCard: some View {
+        glassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Pairing File")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                // Add "Import from appdb" button
+                Button(action: {
+                    appdbImportManager.importFromAppdb { success in
+                        if success {
+                            withAnimation { showPairingFileMessage = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                withAnimation { showPairingFileMessage = false }
+                            }
+                        }
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 18))
+                        Text("Import from appdb")
+                            .fontWeight(.medium)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundColor(accentColor.contrastText())
+                    .background(
+                        appdbImportManager.isImportingFromAppdb ? Color.gray : accentColor,
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                    )
+                }
+                .disabled(appdbImportManager.isImportingFromAppdb)
+                
+                Button {
+                    isShowingPairingFilePicker = true
+                } label: {
+                    HStack {
+                        Image(systemName: "doc.badge.plus")
+                            .font(.system(size: 18))
+                        Text("Import New Pairing File")
+                            .fontWeight(.medium)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundColor(accentColor.contrastText())
+                    .background(accentColor, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                    )
+                }
+                
+                // Show import progress for both manual and appdb imports
+                if isAnyImportInProgress {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text(appdbImportManager.isImportingFile ? "Processing appdb pairing file..." : "Processing pairing file...")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("\(Int(currentImportProgress * 100))%")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color(UIColor.tertiarySystemFill))
+                                    .frame(height: 8)
+                                
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.green)
+                                    .frame(width: geometry.size.width * CGFloat(currentImportProgress), height: 8)
+                                    .animation(.linear(duration: 0.3), value: currentImportProgress)
+                            }
+                        }
+                        .frame(height: 8)
+                    }
+                    .padding(.vertical, 6)
+                }
+                
+                if showPairingFileMessage && pairingFileIsValid && !isAnyImportInProgress {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                        Text("Pairing file successfully imported")
+                            .font(.callout)
+                            .foregroundColor(.green)
+                        Spacer()
+                    }
+                    .padding(.vertical, 6)
+                    .transition(.opacity)
+                }
+            }
+        }
     }
-
+    
+    private var behaviorCard: some View {
+        glassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Behavior")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Toggle("Run Default Script After Connecting", isOn: $useDefaultScript)
+                    .tint(accentColor)
+                Toggle("Picture in Picture", isOn: $enablePiP)
+                    .tint(accentColor)
+            }
+            .onChange(of: enableAdvancedOptions) { _, newValue in
+                if !newValue {
+                    useDefaultScript = false
+                    enablePiP = false
+                    enableAdvancedBetaOptions = false
+                    enableTesting = false
+                }
+            }
+            .onChange(of: enableAdvancedBetaOptions) { _, newValue in
+                if !newValue {
+                    enableTesting = false
+                }
+            }
+        }
+    }
+        
+    private var advancedCard: some View {
+        glassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Advanced")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Button(action: { showingConsoleLogsView = true }) {
+                    HStack {
+                        Image(systemName: "terminal")
+                            .font(.system(size: 18))
+                            .foregroundColor(.primary.opacity(0.8))
+                        Text("System Logs")
+                            .foregroundColor(.primary.opacity(0.8))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                Button(action: { openAppFolder() }) {
+                    HStack {
+                        Image(systemName: "folder")
+                            .font(.system(size: 18))
+                            .foregroundColor(.primary.opacity(0.8))
+                        Text("App Folder")
+                            .foregroundColor(.primary.opacity(0.8))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+        .sheet(isPresented: $showingConsoleLogsView) {
+            ConsoleLogsView()
+                .preferredColorScheme(.dark)
+        }
+    }
+    
+    private var helpCard: some View {
+        glassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Help")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Button(action: {
+                    if let url = URL(string: "https://github.com/StephenDev0/StikDebug-Guide/blob/main/pairing_file.md") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 18))
+                            .foregroundColor(.primary.opacity(0.8))
+                        Text("Pairing File Guide")
+                            .foregroundColor(.primary.opacity(0.8))
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                Button(action: {
+                    if let url = URL(string: "https://discord.gg/qahjXNTDwS") {
+                        UIApplication.shared.open(url)
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 18))
+                            .foregroundColor(.primary.opacity(0.8))
+                        Text("Need support? Join the Discord!")
+                            .foregroundColor(.primary.opacity(0.8))
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "shield.slash")
+                        .font(.system(size: 18))
+                        .foregroundColor(.primary.opacity(0.8))
+                    Text("You can turn off the VPN in the Settings app.")
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+    
+    private var versionInfo: some View {
+        let txmLabel = ProcessInfo.processInfo.hasTXM ? "TXM" : "Non TXM"
+        return HStack {
+            Spacer()
+            Text("Version \(appVersion) • iOS \(UIDevice.current.systemVersion) • \(txmLabel)")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .padding(.top, 6)
+    }
+    
+    // MARK: - Helpers (UI + logic)
+    
+    private func glassCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+    }
+        
     private func changeAppIcon(to iconName: String) {
         selectedAppIcon = iconName
         UIApplication.shared.setAlternateIconName(iconName == "AppIcon" ? nil : iconName) { error in
@@ -799,6 +1224,7 @@ struct LinkRow: View {
         }
     }
 
+    
     var body: some View {
         Button(action: {
             if let url = URL(string: url) {
@@ -811,7 +1237,7 @@ struct LinkRow: View {
                 Spacer()
                 Image(systemName: icon)
                     .font(.system(size: 18))
-                    .foregroundColor(accentColor)
+                    .foregroundColor(.white)
                     .frame(width: 24)
             }
         }
@@ -932,12 +1358,14 @@ struct CollaboratorRow: View {
             }
             .padding(.vertical, 8)
         }
+        .preferredColorScheme(.dark)
     }
 }
 
 struct ConsoleLogsView_Preview: PreviewProvider {
     static var previews: some View {
         ConsoleLogsView()
+            .preferredColorScheme(.dark)
     }
 }
 
