@@ -17,24 +17,22 @@ struct SettingsView: View {
     @AppStorage("enablePiP") private var enablePiP = false
     @AppStorage("customAccentColor") private var customAccentColorHex: String = ""
     @AppStorage("appTheme") private var appThemeRaw: String = AppTheme.system.rawValue
-    private var currentTheme: AppTheme { AppTheme(rawValue: appThemeRaw) ?? .system }
+    @Environment(\.themeExpansionManager) private var themeExpansion
+    private var backgroundStyle: BackgroundStyle { themeExpansion?.backgroundStyle(for: appThemeRaw) ?? AppTheme.system.backgroundStyle }
+    private var preferredScheme: ColorScheme? { themeExpansion?.preferredColorScheme(for: appThemeRaw) }
     
     @State private var isShowingPairingFilePicker = false
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var showIconPopover = false
     @State private var showPairingFileMessage = false
-    @State private var pairingFileIsValid = false
-
-    // Local progress variables for manual file picker (separate from appdb import)
     @State private var isImportingFile = false
     @State private var importProgress: Float = 0.0
+    @State private var pairingStatusMessage: String? = nil
+    @State private var showRemovePairingFileDialog = false
     @State private var is_lc = false
     @State private var showColorPickerPopup = false
-    
-    @StateObject private var mountProg = MountingProgress.shared
-    @State private var mounted = false
-    @State private var showingConsoleLogsView = false
+
     @State private var showingDisplayView = false
 
     // Add state variables for appdb import
@@ -48,8 +46,15 @@ struct SettingsView: View {
     }
     
     private var accentColor: Color {
-        if customAccentColorHex.isEmpty { return .white }
-        return Color(hex: customAccentColorHex) ?? .white
+        themeExpansion?.resolvedAccentColor(from: customAccentColorHex) ?? .blue
+    }
+
+    private var currentThemeName: String {
+        AppTheme(rawValue: appThemeRaw)?.displayName ?? "Default"
+    }
+
+    private var accentColorDescription: String {
+        customAccentColorHex.isEmpty ? "System Blue" : customAccentColorHex.uppercased()
     }
     // Developer profile image URLs
     private let developerProfiles: [String: String] = [
@@ -79,7 +84,7 @@ struct SettingsView: View {
         NavigationStack {
             ZStack {
                 // Subtle depth gradient background
-                ThemedBackground(style: currentTheme.backgroundStyle)
+                ThemedBackground(style: backgroundStyle)
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -125,10 +130,12 @@ struct SettingsView: View {
                 }
                 
                 // Success toast after import
-                if showPairingFileMessage && pairingFileIsValid && !isImportingFile {
+                if let pairingStatusMessage,
+                   showPairingFileMessage,
+                   !isImportingFile {
                     VStack {
                         Spacer()
-                        Text("✓ Pairing file successfully imported")
+                        Text(pairingStatusMessage)
                             .font(.footnote.weight(.semibold))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
@@ -143,8 +150,9 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
         }
-        // Force a white tint in Settings, overriding any global/user tint
-        .tint(Color.white)
+        // Match controls to the active accent color (defaults to blue)
+        .tint(accentColor)
+        .preferredColorScheme(preferredScheme)
         .fileImporter(
             isPresented: $isShowingPairingFilePicker,
             allowedContentTypes: [
@@ -180,7 +188,8 @@ struct SettingsView: View {
                         DispatchQueue.main.async {
                             isImportingFile = true
                             importProgress = 0.0
-                            pairingFileIsValid = false
+                            pairingStatusMessage = nil
+                            showPairingFileMessage = false
                         }
 
                         let progressTimer = Timer.scheduledTimer(
@@ -192,17 +201,6 @@ struct SettingsView: View {
                                 } else {
                                     timer.invalidate()
                                     isImportingFile = false
-                                    pairingFileIsValid = true
-
-                                    withAnimation {
-                                        showPairingFileMessage = true
-                                    }
-
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                        withAnimation {
-                                            showPairingFileMessage = false
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -224,12 +222,6 @@ struct SettingsView: View {
                 print("Failed to import file: \(error)")
             }
         }
-        .alert("Appdb Import Error", isPresented: $appdbImportManager.showAppdbErrorAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(appdbImportManager.appdbErrorMessage)
-        }
-        .preferredColorScheme(.dark)
     }
     
     // MARK: - Cards
@@ -259,17 +251,38 @@ struct SettingsView: View {
     
     private var appearanceCard: some View {
         glassCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 Text("Appearance")
                     .font(.headline)
                     .foregroundColor(.primary)
-                
+
+                HStack(spacing: 14) {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(accentColor)
+                        .frame(width: 44, height: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(currentThemeName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.primary)
+                        Text("Accent · \(accentColorDescription)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+
                 Button(action: { showingDisplayView = true }) {
                     HStack {
                         Image(systemName: "paintbrush")
                             .font(.system(size: 18))
                             .foregroundColor(.primary.opacity(0.85))
-                        Text("Display")
+                        Text("Customize Display")
                             .foregroundColor(.primary.opacity(0.85))
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -282,8 +295,11 @@ struct SettingsView: View {
             .padding(4)
         }
         .sheet(isPresented: $showingDisplayView) {
-            DisplayView()
-                .preferredColorScheme(.dark)
+            if let manager = themeExpansion {
+                DisplayView().themeExpansionManager(manager)
+            } else {
+                DisplayView()
+            }
         }
     }
     
@@ -344,37 +360,7 @@ struct SettingsView: View {
                     )
                 }
                 
-                // Show import progress for both manual and appdb imports
-                if isAnyImportInProgress {
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text(appdbImportManager.isImportingFile ? "Processing appdb pairing file..." : "Processing pairing file...")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(Int(currentImportProgress * 100))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color(UIColor.tertiarySystemFill))
-                                    .frame(height: 8)
-                                
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.green)
-                                    .frame(width: geometry.size.width * CGFloat(currentImportProgress), height: 8)
-                                    .animation(.linear(duration: 0.3), value: currentImportProgress)
-                            }
-                        }
-                        .frame(height: 8)
-                    }
-                    .padding(.vertical, 6)
-                }
-                
-                if showPairingFileMessage && pairingFileIsValid && !isAnyImportInProgress {
+                if showPairingFileMessage && !isImportingFile {
                     HStack {
                         Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
                         Text("Pairing file successfully imported")
@@ -424,21 +410,6 @@ struct SettingsView: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Button(action: { showingConsoleLogsView = true }) {
-                    HStack {
-                        Image(systemName: "terminal")
-                            .font(.system(size: 18))
-                            .foregroundColor(.primary.opacity(0.8))
-                        Text("System Logs")
-                            .foregroundColor(.primary.opacity(0.8))
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.vertical, 8)
-                }
-                
                 Button(action: { openAppFolder() }) {
                     HStack {
                         Image(systemName: "folder")
@@ -454,10 +425,6 @@ struct SettingsView: View {
                     .padding(.vertical, 8)
                 }
             }
-        }
-        .sheet(isPresented: $showingConsoleLogsView) {
-            ConsoleLogsView()
-                .preferredColorScheme(.dark)
         }
     }
     
@@ -657,127 +624,10 @@ struct LinkRow: View {
     }
 }
 
-struct CollaboratorGridItem: View {
-    var name: String
-    var url: String
-    var imageUrl: String
-
-    var body: some View {
-        Button(action: {
-            if let url = URL(string: url) {
-                UIApplication.shared.open(url)
-            }
-        }) {
-            VStack(spacing: 8) {
-                ProfileImage(url: imageUrl)
-                    .frame(width: 50, height: 50)
-                Text(name)
-                    .foregroundColor(.primary)
-                    .fontWeight(.medium)
-                    .font(.subheadline)
-            }
-            .frame(minWidth: 80)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-            .background(Color(UIColor.tertiarySystemBackground))
-            .cornerRadius(12)
-        }
-    }
-}
-
-struct ProfileImage: View {
-    var url: String
-    @State private var image: UIImage?
-
-    var body: some View {
-        Group {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                    )
-            } else {
-                Circle()
-                    .fill(Color(UIColor.systemGray4))
-                    .overlay(
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white)
-                    )
-                    .onAppear {
-                        loadImage()
-                    }
-            }
-        }
-    }
-
-    private func loadImage() {
-        guard let imageUrl = URL(string: url) else { return }
-        URLSession.shared.dataTask(with: imageUrl) { data, response, error in
-            if let data = data, let downloadedImage = UIImage(data: data) {
-                DispatchQueue.main.async {
-                    self.image = downloadedImage
-                }
-            }
-        }.resume()
-    }
-}
-
-struct CollaboratorRow: View {
-    var name: String
-    var url: String
-    var imageUrl: String
-    var quote: String?
-    @AppStorage("customAccentColor") private var customAccentColorHex: String = ""
-
-    private var accentColor: Color {
-        if customAccentColorHex.isEmpty {
-            return .blue
-        } else {
-            return Color(hex: customAccentColorHex) ?? .blue
-        }
-    }
-
-    var body: some View {
-        Button(action: {
-            if let url = URL(string: url) {
-                UIApplication.shared.open(url)
-            }
-        }) {
-            HStack(spacing: 12) {
-                ProfileImage(url: imageUrl)
-                    .frame(width: 40, height: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .foregroundColor(.primary)
-                        .fontWeight(.medium)
-                    if let quote = quote {
-                        Text("“\(quote)”")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                }
-                Spacer()
-                Image(systemName: "link")
-                    .font(.system(size: 16))
-                    .foregroundColor(accentColor)
-            }
-            .padding(.vertical, 8)
-        }
-        .preferredColorScheme(.dark)
-    }
-}
-
 struct ConsoleLogsView_Preview: PreviewProvider {
     static var previews: some View {
         ConsoleLogsView()
-            .preferredColorScheme(.dark)
+            .themeExpansionManager(ThemeExpansionManager(previewUnlocked: true))
     }
 }
 
