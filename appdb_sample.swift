@@ -22,19 +22,27 @@ import AppdbSDK
  */
 func checkAppdbVersion() {
     // Use appdb SDK method instead of manual GitHub API calls
-    let isUpdateAvailable = Appdb.shared.isAppUpdateAvailable()
-    
-    if isUpdateAvailable {
-        print("Update available on appdb!")
-        
-        // Open appdb app page for update
-        let appdbURL = "https://appdb.to/details/45a698af5360560fd8a522a8ebbc634da8f55df4"
-        if let url = URL(string: appdbURL) {
-            // In real app, use UIApplication.shared.open(url)
-            print("Would open: \(url)")
+    // Note: This method is asynchronous and uses a completion handler
+    Appdb.shared.isAppUpdateAvailable { result in
+        DispatchQueue.main.async {
+            switch result {
+            case .success(let isUpdateAvailable):
+                if isUpdateAvailable {
+                    print("Update available on appdb!")
+                    
+                    // Open appdb app page for update
+                    let appdbURL = "https://appdb.to/details/45a698af5360560fd8a522a8ebbc634da8f55df4"
+                    if let url = URL(string: appdbURL) {
+                        // In real app, use UIApplication.shared.open(url)
+                        print("Would open: \(url)")
+                    }
+                } else {
+                    print("App is up to date")
+                }
+            case .failure(let error):
+                print("Failed to check for updates: \(error)")
+            }
         }
-    } else {
-        print("App is up to date")
     }
 }
 
@@ -239,7 +247,8 @@ func exampleUsage() {
  *    - Configure app group: "group.to.appdb.jit-ios"
  * 
  * 2. Version Checking Migration:
- *    - Replace GitHub API calls with Appdb.shared.isAppUpdateAvailable()
+ *    - Replace GitHub API calls with Appdb.shared.isAppUpdateAvailable(completion:)
+ *    - Handle async completion with Result<Bool, AppdbError>
  *    - Update alert to redirect to appdb store page
  *    - Remove manual version.txt parsing
  * 

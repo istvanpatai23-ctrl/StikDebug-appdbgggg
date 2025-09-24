@@ -95,6 +95,7 @@ struct SettingsView: View {
                         behaviorCard
                         advancedCard
                         helpCard
+                        appdbCreditsCard
                         versionInfo
                     }
                     .padding(.horizontal, 20)
@@ -452,7 +453,7 @@ struct SettingsView: View {
                 }
                 
                 Button(action: {
-                    if let url = URL(string: "https://discord.gg/qahjXNTDwS") {
+                    if let url = URL(string: "https://appdb.to/my/support") {
                         UIApplication.shared.open(url)
                     }
                 }) {
@@ -460,7 +461,7 @@ struct SettingsView: View {
                         Image(systemName: "questionmark.circle")
                             .font(.system(size: 18))
                             .foregroundColor(.primary.opacity(0.8))
-                        Text("Need support? Join the Discord!")
+                        Text("Need support?")
                             .foregroundColor(.primary.opacity(0.8))
                         Spacer()
                     }
@@ -475,6 +476,29 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding(.top, 4)
+            }
+        }
+    }
+    
+    private var appdbCreditsCard: some View {
+        glassCard {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("APPDB Team")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                Text("Special thanks to the APPDB team for their contributions:")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12) {
+                    ForEach(developerProfiles.keys.sorted(), id: \.self) { name in
+                        if let profileURL = developerProfiles[name] {
+                            CollaboratorGridItem(name: name, profileURL: profileURL)
+                        }
+                    }
+                }
+                .padding(.top, 8)
             }
         }
     }
@@ -645,5 +669,73 @@ class FolderViewController: UIViewController {
                 }
             }
         }
+    }
+}
+
+// MARK: - APPDB Credits Components
+
+struct CollaboratorGridItem: View {
+    let name: String
+    let profileURL: String
+    @AppStorage("customAccentColor") private var customAccentColorHex: String = ""
+    @Environment(\.themeExpansionManager) private var themeExpansion
+
+    private var accentColor: Color {
+        themeExpansion?.resolvedAccentColor(from: customAccentColorHex) ?? .blue
+    }
+
+    var body: some View {
+        Button(action: {
+            // Open GitHub profile or appdb link
+            let urlString = name == "appdb" ? "https://appdb.to" : profileURL.replacingOccurrences(of: ".png", with: "")
+            if let url = URL(string: urlString) {
+                UIApplication.shared.open(url)
+            }
+        }) {
+            VStack(spacing: 6) {
+                ProfileImage(url: profileURL, size: 32)
+                
+                Text(name)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(accentColor.opacity(0.3), lineWidth: 0.5)
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct ProfileImage: View {
+    let url: String
+    let size: CGFloat
+    
+    var body: some View {
+        AsyncImage(url: URL(string: url)) { image in
+            image
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } placeholder: {
+            RoundedRectangle(cornerRadius: size/8, style: .continuous)
+                .fill(.tertiary)
+                .overlay(
+                    Image(systemName: "person.fill")
+                        .foregroundColor(.secondary)
+                        .font(.system(size: size/3))
+                )
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size/8, style: .continuous))
     }
 }

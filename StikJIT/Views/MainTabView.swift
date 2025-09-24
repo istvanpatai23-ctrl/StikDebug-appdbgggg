@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AppdbSDK
 
 struct MainTabView: View {
     @AppStorage("customAccentColor") private var customAccentColorHex: String = ""
@@ -72,7 +73,12 @@ struct MainTabView: View {
                             .padding(.horizontal)
 
                         Button(action: {
-                            if let url = URL(string: "itms-apps://itunes.apple.com/app/id6744045754") {
+                            // Use appdb URL if installed via appdb, otherwise use App Store
+                            let urlString = Appdb.shared.isInstalledViaAppdb() 
+                                ? "https://appdb.to/details/45a698af5360560fd8a522a8ebbc634da8f55df4"
+                                : "itms-apps://itunes.apple.com/app/id6744045754"
+                            
+                            if let url = URL(string: urlString) {
                                 UIApplication.shared.open(url)
                             }
                         }) {
@@ -108,6 +114,26 @@ struct MainTabView: View {
 
     // MARK: - Update Checker
     private func checkForUpdate() {
+        // Use APPDB SDK for version checking if app is installed via appdb
+        if Appdb.shared.isInstalledViaAppdb() {
+            Appdb.shared.isAppUpdateAvailable { result in
+                DispatchQueue.main.async {
+                    switch result {
+                    case .success(let isUpdateAvailable):
+                        if isUpdateAvailable {
+                            self.latestVersion = "latest"
+                            self.showForceUpdate = true
+                        }
+                    case .failure(let error):
+                        print("APPDB version check failed: \(error)")
+                        // Silently fail, don't show error to user
+                    }
+                }
+            }
+            return
+        }
+        
+        // Fallback to App Store version checking for non-appdb installations
         guard let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String else { return }
 
         fetchLatestVersion { latest in

@@ -4,13 +4,6 @@
 
 This document outlines the comprehensive improvements made to **StikDebug-appdb**, a modified version of the original StikJIT project. The application has been enhanced with deep integration of the appdb SDK and services, providing seamless functionality for users installing the app through appdb.
 
-## Original Project Base
-
-**StikDebug-appdb** is based on the original StikJIT project:
-- **Upstream Repository**: https://github.com/0-Blu/StikJIT (referenced in GitHub Actions and version checking)
-- **Base Functionality**: On-device JIT enabler/debugger for iOS 17.4+ using idevice
-- **License**: AGPL-3.0
-
 ## Major APPDB Improvements
 
 ### 1. Automatic Pairing File Import
@@ -30,9 +23,10 @@ This document outlines the comprehensive improvements made to **StikDebug-appdb*
 - **Error Handling**: Comprehensive error messages with user-friendly alerts
 
 **UI Integration**:
-- **HomeView**: Displays "Import from appdb" card when no pairing file exists
+- **HomeView**: Displays prominent "Import from appdb" card when no pairing file exists, on the top
 - **SettingsView**: Provides manual import option in pairing file section
 - **Progress Indicators**: Shows import progress with animated progress bars
+- **Auto UI Updates**: Automatically refreshes pairing file status after successful import
 
 ### 2. Credits for APPDB Team
 
@@ -62,9 +56,10 @@ private let developerProfiles: [String: String] = [
 
 **Support Links Changed**:
 - **APPDB Guide**: `https://appdb.to/enable-jit` (Pairing file setup guide)
+- **APPDB Support**: `https://appdb.to/my/support` (General support, replaces Discord)
 
 **Integration Points**:
-- **Settings Help Card**: Mention to visit `https://appdb.to/enable-jit`
+- **Settings Help Card**: Links to `https://appdb.to/enable-jit` for pairing file guide and `https://appdb.to/my/support` for general support
 - **HomeView Tips**: Links to APPDB JIT enablement guide
 - **Info.md**: Dedicated support section with link to `https://appdb.to/enable-jit`
 

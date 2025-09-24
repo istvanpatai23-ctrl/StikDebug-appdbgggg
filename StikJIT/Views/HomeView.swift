@@ -113,6 +113,10 @@ struct HomeView: View {
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
+                        if !pairingFileExists {
+                            appdbImportCard
+                        }
+
                         readinessCard
                         if pairingFileExists {
                             quickConnectCard
@@ -865,6 +869,49 @@ struct HomeView: View {
         }
     }
 
+    private var appdbImportCard: some View {
+        homeCard {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 12) {
+                    StatusGlyph(icon: "square.and.arrow.down", tint: accentColor)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Import from appdb")
+                            .font(.system(.title2, design: .rounded).weight(.bold))
+                            .foregroundStyle(.primary)
+
+                        Text("Automatically import your pairing file from appdb services")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Spacer()
+                }
+
+                Button(action: {
+                    appdbImportManager.importFromAppdb { success in
+                        if success {
+                            withAnimation { 
+                                showPairingFileMessage = true
+                                checkPairingFileExists()
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                withAnimation { showPairingFileMessage = false }
+                            }
+                        }
+                    }
+                }) {
+                    whiteCardButtonLabel(
+                        icon: "square.and.arrow.down",
+                        title: "Import from appdb",
+                        isLoading: appdbImportManager.isImportingFromAppdb
+                    )
+                }
+                .disabled(appdbImportManager.isImportingFromAppdb)
+            }
+        }
+    }
+
     private var tipsCard: some View {
         homeCard {
             VStack(alignment: .leading, spacing: 12) {
@@ -883,7 +930,7 @@ struct HomeView: View {
                 Divider().background(Color.white.opacity(0.1))
 
                 Button {
-                    if let url = URL(string: "https://github.com/StephenDev0/StikDebug-Guide/blob/main/pairing_file.md") {
+                    if let url = URL(string: "https://appdb.to/enable-jit") {
                         UIApplication.shared.open(url)
                     }
                 } label: {
@@ -895,7 +942,7 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Pairing File Guide")
                                 .font(.subheadline.weight(.semibold))
-                            Text("Step-by-step instructions from the community wiki.")
+                            Text("Step-by-step instructions")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }

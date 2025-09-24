@@ -8,13 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		17C744F02E20BED000834F17 /* Pipify in Frameworks */ = {isa = PBXBuildFile; productRef = 17C744EF2E20BED000834F17 /* Pipify */; };
-		68AA2E4D2E8214A1008342E8 /* StikDebug.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 68AA2E4C2E8214A1008342E8 /* StikDebug.storekit */; };
 		68AD80462E6B65DA00DE9112 /* ZsignSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 68AD80452E6B65DA00DE9112 /* ZsignSwift */; };
 		68AD80482E6B65DA00DE9112 /* zsign in Frameworks */ = {isa = PBXBuildFile; productRef = 68AD80472E6B65DA00DE9112 /* zsign */; };
 		68D569BE2E1B415700A5BA36 /* CodeEditorView in Frameworks */ = {isa = PBXBuildFile; productRef = 68D569BD2E1B415700A5BA36 /* CodeEditorView */; };
 		68D569C02E1B415700A5BA36 /* LanguageSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 68D569BF2E1B415700A5BA36 /* LanguageSupport */; };
 		68E714E62E6AA2B00025610F /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 68E714E52E6AA2B00025610F /* ZIPFoundation */; };
-		886F4C382E2260C4001F1410 /* AppdbFramework in Frameworks */ = {isa = PBXBuildFile; productRef = 886F4C372E2260C4001F1410 /* AppdbFramework */; };
+		88A0C7712E83EAD30063991F /* AppdbFramework in Frameworks */ = {isa = PBXBuildFile; productRef = 886F4C372E2260C4001F1410 /* AppdbFramework */; };
 		DC139F6E2DE97EA400F63846 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC139F6D2DE97EA400F63846 /* WidgetKit.framework */; };
 		DC139F702DE97EA400F63846 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC139F6F2DE97EA400F63846 /* SwiftUI.framework */; };
 		DC139F812DE97EA600F63846 /* DebugWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DC139F6C2DE97EA400F63846 /* DebugWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -70,7 +69,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		68AA2E4C2E8214A1008342E8 /* StikDebug.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = StikDebug.storekit; sourceTree = "<group>"; };
 		DC139F6C2DE97EA400F63846 /* DebugWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DebugWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC139F6D2DE97EA400F63846 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		DC139F6F2DE97EA400F63846 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -157,6 +155,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88A0C7712E83EAD30063991F /* AppdbFramework in Frameworks */,
 				DCBA85862E3897BD00E88C06 /* StikImporter in Frameworks */,
 				17C744F02E20BED000834F17 /* Pipify in Frameworks */,
 				68AD80462E6B65DA00DE9112 /* ZsignSwift in Frameworks */,
@@ -196,7 +195,6 @@
 			isa = PBXGroup;
 			children = (
 				DC139F862DE97F2000F63846 /* DebugWidgetExtension.entitlements */,
-				68AA2E4C2E8214A1008342E8 /* StikDebug.storekit */,
 				DC6F1D392D94EADD0071B2B6 /* StikJIT */,
 				DC6F1D4B2D94EADF0071B2B6 /* StikJITTests */,
 				DC6F1D552D94EADF0071B2B6 /* StikJITUITests */,
@@ -422,7 +420,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				68AA2E4D2E8214A1008342E8 /* StikDebug.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -732,8 +729,8 @@
 					"$(PROJECT_DIR)/StikJIT/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
-				MARKETING_VERSION = 2.3.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stik.sj;
+				MARKETING_VERSION = 2.3.0a;
+				PRODUCT_BUNDLE_IDENTIFIER = "to.appdb.jit-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
@@ -785,8 +782,8 @@
 					"$(PROJECT_DIR)/StikJIT/idevice",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
-				MARKETING_VERSION = 2.3.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.stik.sj;
+				MARKETING_VERSION = 2.3.0a;
+				PRODUCT_BUNDLE_IDENTIFIER = "to.appdb.jit-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";

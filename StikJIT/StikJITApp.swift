@@ -9,6 +9,7 @@ import SwiftUI
 import Network
 import UniformTypeIdentifiers
 import NetworkExtension
+import AppdbSDK
 
 // Register default settings before the app starts
 private func registerAdvancedOptionsDefault() {
@@ -363,6 +364,14 @@ func httpGet(_ urlString: String, result: @escaping (String?) -> Void) {
 }
 
 func UpdateRetrieval() -> Bool {
+    // Use APPDB SDK for version checking if app is installed via appdb
+    if Appdb.shared.isInstalledViaAppdb() {
+        // APPDB SDK method is async, so we can't use it in this synchronous context
+        // We'll handle this in newVerCheck() instead
+        return false
+    }
+    
+    // Fallback to GitHub version checking for non-appdb installations
     var ver: String {
         let marketingVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         return marketingVersion
@@ -545,8 +554,26 @@ struct HeartbeatApp: App {
         let VUA = UserDefaults.standard.object(forKey: "VersionUpdateAlert") as? Date ?? Date.distantPast
         
         if currentDate > Calendar.current.startOfDay(for: VUA) {
-            if UpdateRetrieval() {
-                alert_title = "Update Avaliable!"
+            // Use APPDB-specific version checking if installed via appdb
+            if Appdb.shared.isInstalledViaAppdb() {
+                Appdb.shared.isAppUpdateAvailable { result in
+                    DispatchQueue.main.async {
+                        switch result {
+                        case .success(let isUpdateAvailable):
+                            if isUpdateAvailable {
+                                self.alert_title = "Update Available!"
+                                self.alert_string = "A new version is available on appdb. Tap OK to update."
+                                self.show_alert = true
+                            }
+                        case .failure(let error):
+                            print("APPDB version check failed: \(error)")
+                            // Silently fail, don't show error to user
+                        }
+                    }
+                }
+            } else if UpdateRetrieval() {
+                alert_title = "Update Available!"
+                // Fallback to GitHub version checking for non-appdb installations
                 let urlString = "https://raw.githubusercontent.com/0-Blu/StikJIT/refs/heads/main/version.txt"
                 httpGet(urlString) { result in
                     if result == nil { return }
@@ -700,7 +727,16 @@ struct HeartbeatApp: App {
                                                 show_alert = false
                                             },
                                             showButton: true,
-                                            primaryButtonText: "OK"
+                                            primaryButtonText: "OK",
+                                            onPrimaryButtonTap: {
+                                                // Handle appdb update URL if this is an update alert
+                                                if alert_title == "Update Available!" && Appdb.shared.isInstalledViaAppdb() {
+                                                    if let url = URL(string: "https://appdb.to/details/45a698af5360560fd8a522a8ebbc634da8f55df4") {
+                                                        UIApplication.shared.open(url)
+                                                    }
+                                                }
+                                                show_alert = false
+                                            }
                                         )
                                     }
                                 }

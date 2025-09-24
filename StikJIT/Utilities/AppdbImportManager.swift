@@ -169,6 +169,7 @@ class AppdbImportManager: ObservableObject {
                         } else {
                             timer.invalidate()
                             self.isImportingFile = false
+                            self.isImportingFromAppdb = false
                             completion(true)
                         }
                     }
@@ -182,6 +183,7 @@ class AppdbImportManager: ObservableObject {
                 self.appdbErrorMessage =
                     "Failed to save pairing file: \(error.localizedDescription)"
                 self.showAppdbErrorAlert = true
+                self.isImportingFromAppdb = false
             }
             completion(false)
         }
