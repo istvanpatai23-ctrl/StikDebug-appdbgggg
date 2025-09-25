@@ -30,25 +30,9 @@ This document outlines the comprehensive improvements made to **StikDebug-appdb*
 
 ### 2. Credits for APPDB Team
 
-**Developer Profiles Dictionary**:
-```swift
-private let developerProfiles: [String: String] = [
-    "appdb": "https://appdb.to/favicon-appdb.png",
-    "Stephen": "https://github.com/StephenDev0.png",
-    "jkcoxson": "https://github.com/jkcoxson.png",
-    "Stossy11": "https://github.com/Stossy11.png",
-    "Neo": "https://github.com/neoarz.png",
-    "Se2crid": "https://github.com/Se2crid.png",
-    "Huge_Black": "https://github.com/HugeBlack.png",
-    "Wynwxst": "https://github.com/Wynwxst.png",
-]
-```
+**Developer Profiles**:
 
-**UI Components**:
-- **CollaboratorGridItem**: Interactive profile cards with GitHub profile images
-- **CollaboratorRow**: Detailed developer information with quotes
-- **ProfileImage**: Async image loading with fallback placeholders
-- **Clickable Profiles**: Direct links to developer GitHub profiles
+Adds "appdb" developer profile with icon https://appdb.to/favicon-appdb.png
 
 ### 3. Support Link Integration
 
